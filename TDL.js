@@ -4,7 +4,6 @@ let timerInterval = null;
 let isPaused = false;
 let remainingTime = 0;
 
-
 document.addEventListener("DOMContentLoaded", () => {
     loadTasks();
     loadTheme();
@@ -33,12 +32,16 @@ function addTask() {
         return;
     }
 
+    const now = new Date();
+    const startDate = new Date(taskStartDate.value);
+    const dueDate = new Date(taskDueDate.value);
+
     const newTask = {
         id: Date.now(),
         name: taskName.value.trim(),
         priority: parseInt(taskPriority.value),
-        startDate: new Date(taskStartDate.value),
-        dueDate: new Date(taskDueDate.value),
+        startDate: startDate,
+        dueDate: dueDate,
         completed: false,
     };
 
@@ -46,28 +49,19 @@ function addTask() {
     saveTasks();
     document.getElementById("taskForm").reset();
     bootstrap.Modal.getInstance(document.getElementById("taskModal")).hide();
-    displayTask("active");
+
+    // Automatically decide where to display it
+    displayTask(startDate > now ? "pending" : "active");
 }
 
 function displayTask(filter = "active") {
     taskContainer.innerHTML = "";
     const now = new Date();
 
-    let activeTasksExist = tasks.some(task => task.priority < 3 && !task.completed);
-
-    if (!activeTasksExist) {
-        tasks.forEach(task => {
-            if (task.priority === 3 && !task.completed) {
-                task.priority = 2;
-            }
-        });
-        saveTasks();
-    }
-
     let sortedTasks = tasks.filter(task => {
         return (
-            (filter === "active" && now < new Date(task.dueDate) && !task.completed) ||
-            (filter === "pending" && now < new Date(task.startDate) && task.priority === 3) ||
+            (filter === "active" && now >= new Date(task.startDate) && now < new Date(task.dueDate) && !task.completed) ||
+            (filter === "pending" && now < new Date(task.startDate)) ||
             (filter === "completed" && task.completed)
         );
     });
@@ -87,6 +81,7 @@ function displayTask(filter = "active") {
             <p>End: ${new Date(task.dueDate).toLocaleString()}</p>
             <button class="btn btn-success" onclick="toggleCompleteTask(${task.id})">${buttonText}</button>
             <button class="btn btn-danger" onclick="deleteTask(${task.id})">Delete</button>
+            <button class="btn btn-primary" onclick="startTask(${task.id})">Start Task</button>
         `;
 
         taskContainer.appendChild(taskCard);
@@ -216,7 +211,6 @@ document.getElementById("endTimer").addEventListener("click", () => {
     updateTimerDisplay("No Active Timer", 0);
     currentTimerId = null;
 });
-
 
 function loadTheme() {
     const savedTheme = localStorage.getItem("theme") || "dark";
